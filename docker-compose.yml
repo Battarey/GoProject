@@ -41,5 +41,12 @@ services:
     networks:
       - default
 
+  test:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    command: ["go", "test", "./test/..."]
+    working_dir: /app
+
 volumes:
   pgdata:
