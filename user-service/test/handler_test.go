@@ -5,7 +5,7 @@ import (
 	"testing"
 	"user-service/handler"
 	"user-service/model"
-	"user-service/proto"
+	user "user-service/proto"
 	"user-service/repository"
 	"user-service/security"
 
@@ -25,7 +25,7 @@ func TestRegisterAndLogin(t *testing.T) {
 	h := setupHandlerTest()
 	ctx := context.Background()
 
-	regReq := &proto.RegisterRequest{
+	regReq := &user.RegisterRequest{
 		Username: "testuser",
 		Email:    "test2@example.com",
 		Password: "password123",
@@ -38,7 +38,7 @@ func TestRegisterAndLogin(t *testing.T) {
 		t.Error("expected non-empty UserId")
 	}
 
-	loginReq := &proto.LoginRequest{
+	loginReq := &user.LoginRequest{
 		Email:    "test2@example.com",
 		Password: "password123",
 	}

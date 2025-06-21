@@ -42,11 +42,11 @@ services:
       - default
 
   test:
-    build:
-      context: ./user-service
-      dockerfile: Dockerfile
-    command: ["go", "test", "./test/..."]
+    image: golang:1.23
     working_dir: /app
+    volumes:
+      - ./user-service:/app
+    command: ["go", "test", "./test/..."]
 
 volumes:
   pgdata:
