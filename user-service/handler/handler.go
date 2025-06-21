@@ -31,7 +31,7 @@ func (s *UserServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	hash := sha256.Sum256([]byte(req.Password))
 	hashedPassword := hex.EncodeToString(hash[:])
 	user := &model.User{
-		ID:       uuid.NewString(),
+		ID:       uuid.New(),
 		Username: req.Username,
 		Email:    req.Email,
 		Password: hashedPassword,
@@ -39,7 +39,7 @@ func (s *UserServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	if err := s.Repo.CreateUser(user); err != nil {
 		return nil, err
 	}
-	return &pb.RegisterResponse{UserId: user.ID}, nil
+	return &pb.RegisterResponse{UserId: user.ID.String()}, nil
 }
 
 func (s *UserServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
@@ -55,7 +55,7 @@ func (s *UserServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 	if user.Password != hex.EncodeToString(hash[:]) {
 		return nil, errors.New("invalid password")
 	}
-	token, err := s.JwtService.GenerateToken(user.ID)
+	token, err := s.JwtService.GenerateToken(user.ID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (s *UserServer) GetProfile(ctx context.Context, req *pb.GetProfileRequest) 
 		return nil, errors.New("user not found")
 	}
 	return &pb.GetProfileResponse{
-		UserId:   user.ID,
+		UserId:   user.ID.String(),
 		Username: user.Username,
 		Email:    user.Email,
 	}, nil

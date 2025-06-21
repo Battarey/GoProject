@@ -9,7 +9,6 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./init-pgcrypto.sql:/docker-entrypoint-initdb.d/init-pgcrypto.sql:ro
 
   user-service:
     build:
@@ -17,13 +16,30 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - db
+      - migrate
     environment:
-      DB_URL: postgres://user:password@db:5432/users_db?sslmode=disable
+      DB_URL: host=db user=user password=password dbname=users_db port=5432 sslmode=disable
       JWT_SECRET: supersecretkey
     ports:
       - "50051:50051"
     restart: unless-stopped
-    command: ["./wait-for-it.sh", "db:5432", "--", "./user-service"]
+    command: ["./user-service"]
+
+  migrate:
+    image: migrate/migrate
+    entrypoint: ["/wait-for-it.sh", "db:5432", "--", "migrate"]
+    command: [
+      "-path=/migrations",
+      "-database=postgres://user:password@db:5432/users_db?sslmode=disable",
+      "up"
+    ]
+    volumes:
+      - ./migrations:/migrations
+      - ./scripts/wait-for-it.sh:/wait-for-it.sh
+    depends_on:
+      - db
+    networks:
+      - default
 
 volumes:
   pgdata:

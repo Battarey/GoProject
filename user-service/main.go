@@ -6,7 +6,6 @@ import (
 
 	"user-service/config"
 	"user-service/handler"
-	"user-service/model"
 	pb "user-service/proto"
 	"user-service/repository"
 	"user-service/security"
@@ -25,10 +24,7 @@ func main() {
 		log.Fatalf("failed to connect to db: %v", err)
 	}
 
-	// Автоматическая миграция
-	if err := db.AutoMigrate(&model.User{}); err != nil {
-		log.Fatalf("failed to migrate: %v", err)
-	}
+	// Миграции теперь выполняются отдельно через golang-migrate
 
 	repo := repository.NewUserRepository(db)
 	jwtService := security.NewJWTService(cfg.JWTSecret)

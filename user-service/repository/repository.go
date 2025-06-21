@@ -3,6 +3,7 @@ package repository
 import (
 	"user-service/model"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +29,11 @@ func (r *UserRepository) GetUserByEmail(email string) (*model.User, error) {
 
 func (r *UserRepository) GetUserByID(id string) (*model.User, error) {
 	var user model.User
-	if err := r.db.Where("id = ?", id).First(&user).Error; err != nil {
+	uuidID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.db.Where("id = ?", uuidID).First(&user).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
