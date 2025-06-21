@@ -10,6 +10,7 @@ type User struct {
 	Username string
 	Email    string `gorm:"uniqueIndex"`
 	Password string
+	Role     string // роль пользователя (например, "user", "admin")
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {

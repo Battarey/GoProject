@@ -42,3 +42,23 @@ func (r *UserRepository) GetUserByID(id string) (*model.User, error) {
 	}
 	return &user, nil
 }
+
+func (r *UserRepository) UpdateUser(user *model.User) error {
+	return r.db.Save(user).Error
+}
+
+func (r *UserRepository) DeleteUser(id string) error {
+	uuidID, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(&model.User{}, "id = ?", uuidID).Error
+}
+
+func (r *UserRepository) ListUsers(offset, limit int) ([]model.User, error) {
+	var users []model.User
+	if err := r.db.Offset(offset).Limit(limit).Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
+}
