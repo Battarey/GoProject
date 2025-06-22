@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"regexp"
 	"strings"
 	"user-service/model"
 	pb "user-service/proto"
@@ -20,6 +21,9 @@ type UserServer struct {
 	JwtService *security.JWTService
 }
 
+var emailRegex = regexp.MustCompile(`^[\w._%+-]+@[\w.-]+\.[a-zA-Z]{2,}$`)
+var allowedRoles = map[string]bool{"user": true, "admin": true}
+
 func isValidEmail(email string) bool {
 	// Простейшая проверка email (можно заменить на regexp)
 	return len(email) >= 6 && len(email) <= 128 && strings.Contains(email, "@")
@@ -29,18 +33,38 @@ func isValidRole(role string) bool {
 	return role == "user" || role == "admin"
 }
 
-func (s *UserServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
-	if len(req.Username) < 3 || len(req.Username) > 64 {
-		return nil, errors.New("username must be 3-64 characters")
+func validateRegisterInput(req *pb.RegisterRequest) error {
+	if req.Username == "" {
+		return errors.New("username is required")
 	}
-	if !isValidEmail(req.Email) {
-		return nil, errors.New("invalid email")
+	if !emailRegex.MatchString(req.Email) {
+		return errors.New("invalid email")
 	}
 	if len(req.Password) < 6 {
-		return nil, errors.New("password must be at least 6 characters")
+		return errors.New("password must be at least 6 characters")
 	}
-	if req.Role != "" && !isValidRole(req.Role) {
-		return nil, errors.New("invalid role")
+	if req.Role != "" && !allowedRoles[req.Role] {
+		return errors.New("invalid role")
+	}
+	return nil
+}
+
+func validateUpdateInput(req *pb.UpdateUserRequest) error {
+	if req.Username == "" {
+		return errors.New("username is required")
+	}
+	if !emailRegex.MatchString(req.Email) {
+		return errors.New("invalid email")
+	}
+	if req.Role != "" && !allowedRoles[req.Role] {
+		return errors.New("invalid role")
+	}
+	return nil
+}
+
+func (s *UserServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+	if err := validateRegisterInput(req); err != nil {
+		return nil, err
 	}
 	existing, err := s.Repo.GetUserByEmail(req.Email)
 	if err != nil {
@@ -106,14 +130,8 @@ func (s *UserServer) GetProfile(ctx context.Context, req *pb.GetProfileRequest) 
 }
 
 func (s *UserServer) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest) (*pb.UpdateUserResponse, error) {
-	if len(req.Username) < 3 || len(req.Username) > 64 {
-		return nil, errors.New("username must be 3-64 characters")
-	}
-	if !isValidEmail(req.Email) {
-		return nil, errors.New("invalid email")
-	}
-	if !isValidRole(req.Role) {
-		return nil, errors.New("invalid role")
+	if err := validateUpdateInput(req); err != nil {
+		return nil, err
 	}
 	user, err := s.Repo.GetUserByID(req.UserId)
 	if err != nil {

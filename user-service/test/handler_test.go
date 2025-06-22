@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"user-service/handler"
 	"user-service/model"
@@ -144,8 +145,8 @@ func TestListUsers(t *testing.T) {
 	ctx := context.Background()
 	for i := 1; i <= 5; i++ {
 		_, err := h.Register(ctx, &user.RegisterRequest{
-			Username: "user" + string(rune(i)),
-			Email:    "user" + string(rune(i)) + "@example.com",
+			Username: "user" + strconv.Itoa(i),
+			Email:    "user" + strconv.Itoa(i) + "@example.com",
 			Password: "password123",
 			Role:     "user",
 		})
