@@ -6,11 +6,13 @@ import (
 )
 
 type User struct {
-	ID       uuid.UUID `gorm:"type:uuid;primaryKey"`
-	Username string
-	Email    string `gorm:"uniqueIndex"`
-	Password string
-	Role     string // роль пользователя (например, "user", "admin")
+	ID                     uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Username               string
+	Email                  string `gorm:"uniqueIndex"`
+	Password               string
+	Role                   string // роль пользователя (например, "user", "admin")
+	IsEmailConfirmed       bool
+	EmailConfirmationToken string
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {

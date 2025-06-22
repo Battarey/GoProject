@@ -10,6 +10,11 @@ import (
 type Config struct {
 	DBUrl     string
 	JWTSecret string
+	SMTPHost  string
+	SMTPPort  string
+	SMTPUser  string
+	SMTPPass  string
+	FromEmail string
 }
 
 func LoadConfig() *Config {
@@ -19,6 +24,11 @@ func LoadConfig() *Config {
 	cfg := &Config{
 		DBUrl:     os.Getenv("DB_URL"),
 		JWTSecret: os.Getenv("JWT_SECRET"),
+		SMTPHost:  os.Getenv("SMTP_HOST"),
+		SMTPPort:  os.Getenv("SMTP_PORT"),
+		SMTPUser:  os.Getenv("SMTP_USER"),
+		SMTPPass:  os.Getenv("SMTP_PASS"),
+		FromEmail: os.Getenv("FROM_EMAIL"),
 	}
 
 	if cfg.DBUrl == "" || cfg.JWTSecret == "" {

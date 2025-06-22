@@ -62,3 +62,21 @@ func (r *UserRepository) ListUsers(offset, limit int) ([]model.User, error) {
 	}
 	return users, nil
 }
+
+func (r *UserRepository) GetUserByEmailAndToken(email, token string) (*model.User, error) {
+	var user model.User
+	err := r.db.Where("email = ? AND email_confirmation_token = ?", email, token).First(&user).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) ConfirmUserEmail(user *model.User) error {
+	user.IsEmailConfirmed = true
+	user.EmailConfirmationToken = ""
+	return r.db.Save(user).Error
+}

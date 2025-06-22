@@ -3,10 +3,17 @@ package handler
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"math/rand"
+	"net/smtp"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
+	"user-service/config"
 	"user-service/model"
 	pb "user-service/proto"
 	"user-service/repository"
@@ -62,7 +69,53 @@ func validateUpdateInput(req *pb.UpdateUserRequest) error {
 	return nil
 }
 
+// Rate limiting (in-memory, на pet-проект)
+type rateLimiter struct {
+	mu      sync.Mutex
+	buckets map[string][]int64 // ключ: email или IP, значения: unix timestamps
+	limit   int
+	window  int64 // в секундах
+}
+
+func newRateLimiter(limit int, windowSec int64) *rateLimiter {
+	return &rateLimiter{
+		buckets: make(map[string][]int64),
+		limit:   limit,
+		window:  windowSec,
+	}
+}
+
+func (r *rateLimiter) Allow(key string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	now := time.Now().Unix()
+	windowStart := now - r.window
+	times := r.buckets[key]
+	// Оставляем только те, что в окне
+	var filtered []int64
+	for _, t := range times {
+		if t > windowStart {
+			filtered = append(filtered, t)
+		}
+	}
+	if len(filtered) >= r.limit {
+		return false
+	}
+	filtered = append(filtered, now)
+	r.buckets[key] = filtered
+	return true
+}
+
+var regLimiter = newRateLimiter(5, 60)    // 5 регистраций в минуту на email
+var loginLimiter = newRateLimiter(10, 60) // 10 логинов в минуту на email
+
+// MOCK: Подмена отправки email для тестов
+var SendEmailFunc = sendConfirmationEmail
+
 func (s *UserServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+	if !regLimiter.Allow(strings.ToLower(req.Email)) {
+		return nil, errors.New("too many registration attempts, try later")
+	}
 	if err := validateRegisterInput(req); err != nil {
 		return nil, err
 	}
@@ -80,20 +133,31 @@ func (s *UserServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	if role == "" {
 		role = "user"
 	}
+	token, err := generateEmailToken()
+	if err != nil {
+		return nil, err
+	}
 	user := &model.User{
-		ID:       uuid.New(),
-		Username: req.Username,
-		Email:    req.Email,
-		Password: hashedPassword,
-		Role:     role,
+		ID:                     uuid.New(),
+		Username:               req.Username,
+		Email:                  req.Email,
+		Password:               hashedPassword,
+		Role:                   role,
+		IsEmailConfirmed:       false,
+		EmailConfirmationToken: token,
 	}
 	if err := s.Repo.CreateUser(user); err != nil {
 		return nil, err
 	}
+	cfg := config.LoadConfig()
+	_ = SendEmailFunc(cfg, user.Email, token) // Ошибку можно логировать
 	return &pb.RegisterResponse{UserId: user.ID.String()}, nil
 }
 
 func (s *UserServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+	if !loginLimiter.Allow(strings.ToLower(req.Email)) {
+		return nil, errors.New("too many login attempts, try later")
+	}
 	user, err := s.Repo.GetUserByEmail(req.Email)
 	if err != nil {
 		return nil, err
@@ -174,4 +238,37 @@ func (s *UserServer) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (*
 		})
 	}
 	return &pb.ListUsersResponse{Users: userInfos, Total: int32(len(userInfos))}, nil
+}
+
+func (s *UserServer) ConfirmEmail(ctx context.Context, req *pb.ConfirmEmailRequest) (*pb.ConfirmEmailResponse, error) {
+	user, err := s.Repo.GetUserByEmailAndToken(req.Email, req.Token)
+	if err != nil {
+		return &pb.ConfirmEmailResponse{Success: false, Message: "internal error"}, err
+	}
+	if user == nil {
+		return &pb.ConfirmEmailResponse{Success: false, Message: "invalid token or email"}, nil
+	}
+	if user.IsEmailConfirmed {
+		return &pb.ConfirmEmailResponse{Success: false, Message: "email already confirmed"}, nil
+	}
+	if err := s.Repo.ConfirmUserEmail(user); err != nil {
+		return &pb.ConfirmEmailResponse{Success: false, Message: "failed to confirm email"}, err
+	}
+	return &pb.ConfirmEmailResponse{Success: true, Message: "email confirmed"}, nil
+}
+
+func generateEmailToken() (string, error) {
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+func sendConfirmationEmail(cfg *config.Config, to, token string) error {
+	msg := fmt.Sprintf("Subject: Email Confirmation\n\nPlease confirm your email by clicking the link: http://localhost:8080/confirm?email=%s&token=%s", to, token)
+	auth := smtp.PlainAuth("", cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPHost)
+	addr := fmt.Sprintf("%s:%s", cfg.SMTPHost, cfg.SMTPPort)
+	return smtp.SendMail(addr, auth, cfg.FromEmail, []string{to}, []byte(msg))
 }
