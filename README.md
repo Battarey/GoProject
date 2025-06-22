@@ -43,3 +43,21 @@ GoLessons/
 ```
 docker-compose up --build
 ```
+
+## TODO (сделать позже)
+- Восстановление пароля (reset password, email confirmation, генерация токена для сброса)
+- Подтверждение email (отправка письма с кодом/ссылкой) — реализовано, но можно доработать (например, вынести в отдельный сервис)
+- Интеграционные тесты (расширить, добавить тесты с реальной БД)
+- Нагрузочные тесты (k6, vegeta, autocannon)
+- Покрытие тестами edge-case сценариев (расширять по мере добавления фич)
+- Rate limiting (ограничение количества запросов) — реализовано, но можно вынести в middleware/отдельный сервис
+- Двухфакторная аутентификация (2FA)
+- Аудит действий пользователя (логирование входов, изменений профиля)
+- Интеграция с внешними сервисами (email, SMS, OAuth)
+- OpenAPI/Swagger-документация через gRPC-Gateway
+- Healthcheck endpoint для Kubernetes/DevOps
+- Helm-чарт для Kubernetes
+- Мониторинг (Prometheus-метрики, алерты)
+- Централизованный notification-service
+- API Gateway
+- Расширение микросервисов: task-service, chat-service, notification-service, log-service и др.
