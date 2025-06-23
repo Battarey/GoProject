@@ -1,29 +1,40 @@
 # API Gateway
 
-## Описание
-API Gateway — точка входа для всех внешних HTTP-запросов к микросервисам платформы. 
-Реализован на Go как отдельный сервис.
+API Gateway — точка входа для HTTP-запросов к микросервисам Team Collaboration Platform. Реализован на Go, легко расширяется для новых сервисов.
 
-- Проксирует запросы `/user/*` на user-service (gRPC-Gateway или REST endpoint).
-- Легко расширяется для маршрутизации к другим сервисам (task, chat и др.).
-- В перспективе: поддержка JWT, CORS, healthcheck, логирование, rate limiting.
-
-## Запуск
-API Gateway будет доступен на http://localhost:8080
-
-## Пример запроса
-```
-curl http://localhost:8080/user/health
-```
+- Reverse proxy для маршрута `/user/*` на user-service
+- JWT middleware (аутентификация)
+- Rate limiting (ограничение частоты запросов)
+- CORS middleware (разрешение кросс-доменных запросов)
+- Healthcheck endpoint `/health`
+- Готов к расширению (task, chat и др.)
 
 ## Структура
-api-gateway/  
-├── main.go                # точка входа, маршрутизация, reverse proxy
-└── Dockerfile             # сборка и запуск сервиса
+```
+api-gateway/
+├── main.go                # Точка входа, маршрутизация, запуск сервера
+├── handlers/              # Обработчики (health, proxy)
+│   ├── health.go
+│   └── proxy.go
+├── middlewares/           # Middleware: JWT, CORS, rate limiting
+│   ├── cors.go
+│   ├── jwt.go
+│   └── ratelimit.go
+├── test/                  # Unit-тесты middleware и обработчиков
+│   ├── cors_test.go
+│   ├── health_test.go
+│   ├── jwt_test.go
+│   └── ratelimit_test.go
+├── Dockerfile             # Сборка и запуск сервиса
+└── go.mod                 # Go modules
+```
 
-## TODO
-- JWT middleware (аутентификация)
-- CORS
-- Healthcheck endpoint
-- Проксирование к другим микросервисам
-- Логирование и мониторинг
+## Примеры запросов
+Проверка работоспособности:
+```
+curl http://localhost:8080/health
+```
+Запрос к user-service через gateway:
+```
+curl http://localhost:8080/user/profile
+```

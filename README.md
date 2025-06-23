@@ -31,11 +31,9 @@ docker-compose up --build
 - CI: Реализовано в папке .github
 - CD: Реализовано на DockerHub, с помощью секретных ключей на GitHub
 
-## TODO 
+## TODO
 - OpenAPI/Swagger-документация через gRPC-Gateway
-- Healthcheck endpoint для Kubernetes/DevOps
 - Helm-чарт для Kubernetes
 - Мониторинг (Prometheus-метрики, алерты)
 - Централизованный notification-service
-- API Gateway
 - Расширение микросервисов: task-service, chat-service, notification-service, log-service и др.

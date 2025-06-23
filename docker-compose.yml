@@ -43,7 +43,7 @@ services:
     networks:
       - default
 
-  test:
+  user_test:
     image: golang:1.23
     working_dir: /app
     volumes:
@@ -52,6 +52,9 @@ services:
     env_file:
       - .env
     restart: "no"
+    depends_on:
+      - user-service
+      - db
 
   api-gateway:
     build:
@@ -65,6 +68,17 @@ services:
       GATEWAY_PORT: 8080
     restart: unless-stopped
     command: ["./api-gateway"]
+
+  gateway_test:
+    image: golang:1.23
+    working_dir: /app
+    volumes:
+      - ./api-gateway:/app
+    command: ["go", "test", "./test/..."]
+    restart: "no"
+    depends_on:
+      - api-gateway
+      - user-service
 
 volumes:
   pgdata:

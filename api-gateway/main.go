@@ -3,9 +3,10 @@ package main
 import (
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
+
+	"api-gateway/handlers"
+	"api-gateway/middlewares"
 )
 
 func main() {
@@ -15,12 +16,20 @@ func main() {
 	}
 	mux := http.NewServeMux()
 
-	userServiceURL, _ := url.Parse("http://user-service:8081")
-	userProxy := httputil.NewSingleHostReverseProxy(userServiceURL)
-	mux.Handle("/user/", http.StripPrefix("/user", userProxy))
+	// Healthcheck endpoint
+	mux.HandleFunc("/health", handlers.HealthHandler)
+
+	// /user/* с JWT и rate limiting
+	userHandler := handlers.NewUserProxy()
+	mux.Handle("/user/", middlewares.JWTMiddleware(middlewares.RateLimitMiddleware(userHandler)))
+
+	// Можно добавить другие сервисы: /task/, /chat/ и т.д.
+
+	// Оборачиваем всё в CORS
+	handler := middlewares.CORSMiddleware(mux)
 
 	log.Printf("api-gateway started on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatal(err)
 	}
 }
