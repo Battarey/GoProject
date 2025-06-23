@@ -1,6 +1,5 @@
 # Team Collaboration Platform
 
-## Краткое описание
 Многофункциональный backend для платформы командной работы: 
  - управление задачами (Kanban),
  - чат, уведомления,
@@ -9,46 +8,30 @@
 
 ## Архитектура
 - Микросервисная структура: каждый сервис отвечает за свою область (users, tasks, chat, notifications, logs и др.).
-- Взаимодействие между сервисами через gRPC и/или message broker.
 
 ## Структура проекта
 ```
 GoLessons/
-├── migrations                 # SQL-миграции для базы данных (up/down)
-├── scripts                    # Скрипты для инфраструктуры (например, wait-for-it.sh)
-├── user-service/              # Основной микросервис управления пользователями
-│   ├── config                 # Конфигурация сервиса
-│   ├── handler                # gRPC-обработчики (endpoint-логика)
-│   ├── model                  # Модели данных (структуры пользователей)
-│   ├── proto                  # gRPC-протоколы и сгенерированные файлы
-│   ├── repository             # Слой доступа к данным (работа с БД)
-│   ├── security               # Логика безопасности (JWT, авторизация)
-│   ├── test                   # Модульные тесты для сервиса
-│   ├── Dockerfile             # Dockerfile для сборки user-service
-│   ├── go.mod
-│   ├── go.sum
-│   └── main.go
 ├── .github/                   # Папка для CI/CD 
-├── docker-compose.yml         # Docker Compose для запуска всех сервисов и БД
+├── api-gateway/               # Собственный API Gateway сервис
+├── migrations/                # SQL-миграции для базы данных (up/down)
+├── scripts/                   # Скрипты для инфраструктуры (например, wait-for-it.sh)
+├── user-service/              # Микросервис управления пользователями
 ├── .env                       # Переменные окружения
-└── README.md                  # Глобальное описание и архитектура проекта
+└── docker-compose.yml         # Docker Compose для запуска всех сервисов и БД
 ```
-
-## user-service
-- Сервис управления пользователями, аутентификацией и ролями.
-- Реализован на Go, gRPC, PostgreSQL, JWT, Docker, миграции через golang-migrate.
-- Поддержка CRUD, ролей, валидации, тестов, CI/CD, публикации Docker-образа.
 
 ## Запуск
 ```
 docker-compose up --build
 ```
 
-## TODO (сделать позже)
-- Нагрузочные тесты (k6, vegeta, autocannon)
-- Двухфакторная аутентификация (2FA)
-- Аудит действий пользователя (логирование входов, изменений профиля)
-- Интеграция с внешними сервисами (email, SMS, OAuth)
+## CI/CD
+В проекте реализовано минимальное CI/CD: 
+- CI: Реализовано в папке .github
+- CD: Реализовано на DockerHub, с помощью секретных ключей на GitHub
+
+## TODO 
 - OpenAPI/Swagger-документация через gRPC-Gateway
 - Healthcheck endpoint для Kubernetes/DevOps
 - Helm-чарт для Kubernetes

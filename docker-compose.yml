@@ -23,7 +23,9 @@ services:
     ports:
       - "50051:50051"
     restart: unless-stopped
-    command: ["./user-service"]
+    entrypoint: ["/wait-for-it.sh", "db:5432", "--", "./user-service"]
+    volumes:
+      - ./scripts/wait-for-it.sh:/wait-for-it.sh
 
   migrate:
     image: migrate/migrate
@@ -49,6 +51,20 @@ services:
     command: ["go", "test", "./test/..."]
     env_file:
       - .env
+    restart: "no"
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    depends_on:
+      - user-service
+    ports:
+      - "8080:8080"
+    environment:
+      GATEWAY_PORT: 8080
+    restart: unless-stopped
+    command: ["./api-gateway"]
 
 volumes:
   pgdata:
