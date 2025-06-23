@@ -12,6 +12,8 @@ service UserService {
   rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse);
   rpc ListUsers (ListUsersRequest) returns (ListUsersResponse);
   rpc ConfirmEmail (ConfirmEmailRequest) returns (ConfirmEmailResponse);
+  rpc RequestPasswordReset (RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
+  rpc ResetPassword (ResetPasswordRequest) returns (ResetPasswordResponse);
 }
 
 message RegisterRequest {
@@ -87,6 +89,26 @@ message ConfirmEmailRequest {
 }
 
 message ConfirmEmailResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RequestPasswordResetRequest {
+  string email = 1;
+}
+
+message RequestPasswordResetResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ResetPasswordRequest {
+  string email = 1;
+  string token = 2;
+  string new_password = 3;
+}
+
+message ResetPasswordResponse {
   bool success = 1;
   string message = 2;
 }

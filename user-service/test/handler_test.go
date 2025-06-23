@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 	"user-service/config"
 	"user-service/handler"
 	"user-service/model"
@@ -301,5 +302,92 @@ func TestRateLimiting(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "too many login attempts") {
 		t.Error("expected rate limit error for login")
+	}
+}
+
+func TestPasswordReset(t *testing.T) {
+	h := setupHandlerTest()
+	ctx := context.Background()
+
+	// Подмена отправки email на mock
+	handler.SendEmailFunc = func(cfg *config.Config, to, token string) error {
+		return nil
+	}
+
+	// Регистрация пользователя
+	email := "reset@example.com"
+	_, err := h.Register(ctx, &user.RegisterRequest{
+		Username: "resetuser",
+		Email:    email,
+		Password: "password123",
+	})
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+
+	// Запрос сброса пароля
+	resp, err := h.RequestPasswordReset(ctx, &user.RequestPasswordResetRequest{Email: email})
+	if err != nil || !resp.Success {
+		t.Fatalf("request password reset failed: %v, %v", err, resp.Message)
+	}
+
+	// Получаем токен из репозитория
+	repoUser, _ := h.Repo.GetUserByEmail(email)
+	token := repoUser.PasswordResetToken
+	if token == "" {
+		t.Fatal("reset token not set")
+	}
+
+	// Сброс пароля с валидным токеном
+	resetResp, err := h.ResetPassword(ctx, &user.ResetPasswordRequest{
+		Email:       email,
+		Token:       token,
+		NewPassword: "newpassword123",
+	})
+	if err != nil || !resetResp.Success {
+		t.Fatalf("reset password failed: %v, %v", err, resetResp.Message)
+	}
+
+	// Попытка сброса с тем же токеном (уже использован)
+	resetResp2, _ := h.ResetPassword(ctx, &user.ResetPasswordRequest{
+		Email:       email,
+		Token:       token,
+		NewPassword: "anotherpass",
+	})
+	if resetResp2.Success {
+		t.Error("should not reset with used token")
+	}
+
+	// Попытка сброса с невалидным токеном
+	resetResp3, _ := h.ResetPassword(ctx, &user.ResetPasswordRequest{
+		Email:       email,
+		Token:       "badtoken",
+		NewPassword: "anotherpass",
+	})
+	if resetResp3.Success {
+		t.Error("should not reset with invalid token")
+	}
+
+	// Попытка сброса с коротким паролем
+	// Сначала снова запросим сброс
+	_ = h.Repo.SetPasswordResetToken(email, "shorttoken", time.Now().Add(30*time.Minute).Unix())
+	resetResp4, _ := h.ResetPassword(ctx, &user.ResetPasswordRequest{
+		Email:       email,
+		Token:       "shorttoken",
+		NewPassword: "123",
+	})
+	if resetResp4.Success {
+		t.Error("should not reset with short password")
+	}
+
+	// Попытка сброса с истёкшим токеном
+	_ = h.Repo.SetPasswordResetToken(email, "expiredtoken", time.Now().Add(-1*time.Minute).Unix())
+	resetResp5, _ := h.ResetPassword(ctx, &user.ResetPasswordRequest{
+		Email:       email,
+		Token:       "expiredtoken",
+		NewPassword: "validpassword",
+	})
+	if resetResp5.Success {
+		t.Error("should not reset with expired token")
 	}
 }

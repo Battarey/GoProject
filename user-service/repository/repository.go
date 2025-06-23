@@ -80,3 +80,29 @@ func (r *UserRepository) ConfirmUserEmail(user *model.User) error {
 	user.EmailConfirmationToken = ""
 	return r.db.Save(user).Error
 }
+
+func (r *UserRepository) SetPasswordResetToken(email, token string, expiresAt int64) error {
+	return r.db.Model(&model.User{}).Where("email = ?", email).Updates(map[string]interface{}{
+		"password_reset_token":      token,
+		"password_reset_expires_at": expiresAt,
+	}).Error
+}
+
+func (r *UserRepository) GetUserByEmailAndResetToken(email, token string) (*model.User, error) {
+	var user model.User
+	err := r.db.Where("email = ? AND password_reset_token = ?", email, token).First(&user).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) ResetPassword(user *model.User, newPassword string) error {
+	user.Password = newPassword
+	user.PasswordResetToken = ""
+	user.PasswordResetExpiresAt = 0
+	return r.db.Save(user).Error
+}

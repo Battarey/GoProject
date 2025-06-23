@@ -13,6 +13,8 @@ type User struct {
 	Role                   string // роль пользователя (например, "user", "admin")
 	IsEmailConfirmed       bool
 	EmailConfirmationToken string
+	PasswordResetToken     string
+	PasswordResetExpiresAt int64 // unix timestamp
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {

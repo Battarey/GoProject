@@ -257,6 +257,43 @@ func (s *UserServer) ConfirmEmail(ctx context.Context, req *pb.ConfirmEmailReque
 	return &pb.ConfirmEmailResponse{Success: true, Message: "email confirmed"}, nil
 }
 
+func (s *UserServer) RequestPasswordReset(ctx context.Context, req *pb.RequestPasswordResetRequest) (*pb.RequestPasswordResetResponse, error) {
+	user, err := s.Repo.GetUserByEmail(req.Email)
+	if err != nil || user == nil {
+		return &pb.RequestPasswordResetResponse{Success: false, Message: "user not found"}, nil
+	}
+	token, err := generateResetToken()
+	if err != nil {
+		return &pb.RequestPasswordResetResponse{Success: false, Message: "failed to generate token"}, err
+	}
+	expiresAt := time.Now().Add(30 * time.Minute).Unix()
+	if err := s.Repo.SetPasswordResetToken(user.Email, token, expiresAt); err != nil {
+		return &pb.RequestPasswordResetResponse{Success: false, Message: "failed to save token"}, err
+	}
+	cfg := config.LoadConfig()
+	_ = sendPasswordResetEmail(cfg, user.Email, token)
+	return &pb.RequestPasswordResetResponse{Success: true, Message: "reset email sent"}, nil
+}
+
+func (s *UserServer) ResetPassword(ctx context.Context, req *pb.ResetPasswordRequest) (*pb.ResetPasswordResponse, error) {
+	user, err := s.Repo.GetUserByEmailAndResetToken(req.Email, req.Token)
+	if err != nil || user == nil {
+		return &pb.ResetPasswordResponse{Success: false, Message: "invalid token or email"}, nil
+	}
+	if user.PasswordResetExpiresAt < time.Now().Unix() {
+		return &pb.ResetPasswordResponse{Success: false, Message: "token expired"}, nil
+	}
+	if len(req.NewPassword) < 6 {
+		return &pb.ResetPasswordResponse{Success: false, Message: "password too short"}, nil
+	}
+	hash := sha256.Sum256([]byte(req.NewPassword))
+	hashedPassword := hex.EncodeToString(hash[:])
+	if err := s.Repo.ResetPassword(user, hashedPassword); err != nil {
+		return &pb.ResetPasswordResponse{Success: false, Message: "failed to reset password"}, err
+	}
+	return &pb.ResetPasswordResponse{Success: true, Message: "password reset successful"}, nil
+}
+
 func generateEmailToken() (string, error) {
 	b := make([]byte, 32)
 	_, err := rand.Read(b)
@@ -268,6 +305,22 @@ func generateEmailToken() (string, error) {
 
 func sendConfirmationEmail(cfg *config.Config, to, token string) error {
 	msg := fmt.Sprintf("Subject: Email Confirmation\n\nPlease confirm your email by clicking the link: http://localhost:8080/confirm?email=%s&token=%s", to, token)
+	auth := smtp.PlainAuth("", cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPHost)
+	addr := fmt.Sprintf("%s:%s", cfg.SMTPHost, cfg.SMTPPort)
+	return smtp.SendMail(addr, auth, cfg.FromEmail, []string{to}, []byte(msg))
+}
+
+func generateResetToken() (string, error) {
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+func sendPasswordResetEmail(cfg *config.Config, to, token string) error {
+	msg := fmt.Sprintf("Subject: Password Reset\n\nTo reset your password, click the link: http://localhost:8080/reset?email=%s&token=%s", to, token)
 	auth := smtp.PlainAuth("", cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPHost)
 	addr := fmt.Sprintf("%s:%s", cfg.SMTPHost, cfg.SMTPPort)
 	return smtp.SendMail(addr, auth, cfg.FromEmail, []string{to}, []byte(msg))
