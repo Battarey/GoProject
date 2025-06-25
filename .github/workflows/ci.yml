@@ -16,7 +16,8 @@ jobs:
       - name: Build and test with docker-compose
         run: |
           docker-compose build
-          docker-compose run --rm migrate
+          docker-compose run --rm migrate-user
+          docker-compose run --rm migrate-task
           docker-compose run --rm user_test
           docker-compose run --rm gateway_test
       - name: Log in to Docker Hub
