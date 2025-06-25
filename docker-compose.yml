@@ -9,6 +9,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./scripts/init-multi-db.sh:/docker-entrypoint-initdb.d/init-multi-db.sh
 
   user-service:
     build:
@@ -16,7 +17,7 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - db
-      - migrate
+      - migrate-user
     environment:
       DB_URL: host=db user=user password=password dbname=users_db port=5432 sslmode=disable
       JWT_SECRET: supersecretkey
@@ -27,7 +28,7 @@ services:
     volumes:
       - ./scripts/wait-for-it.sh:/wait-for-it.sh
 
-  migrate:
+  migrate-user:
     image: migrate/migrate
     entrypoint: ["/wait-for-it.sh", "db:5432", "--", "migrate"]
     command: [
@@ -36,25 +37,12 @@ services:
       "up"
     ]
     volumes:
-      - ./migrations:/migrations
+      - ./user-service/migrations:/migrations
       - ./scripts/wait-for-it.sh:/wait-for-it.sh
     depends_on:
       - db
     networks:
       - default
-
-  user_test:
-    image: golang:1.23
-    working_dir: /app
-    volumes:
-      - ./user-service:/app
-    command: ["go", "test", "./test/..."]
-    env_file:
-      - .env
-    restart: "no"
-    depends_on:
-      - user-service
-      - db
 
   api-gateway:
     build:
@@ -79,6 +67,40 @@ services:
     depends_on:
       - api-gateway
       - user-service
+
+  task-service:
+    build:
+      context: ./task-service
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - migrate-task
+    environment:
+      DB_URL: host=db user=user password=password dbname=tasks_db port=5432 sslmode=disable
+      JWT_SECRET: supersecretkey
+      TASK_SERVICE_PORT: 50052
+    ports:
+      - "50052:50052"
+    restart: unless-stopped
+    entrypoint: ["/wait-for-it.sh", "db:5432", "--", "./task-service"]
+    volumes:
+      - ./scripts/wait-for-it.sh:/wait-for-it.sh
+
+  migrate-task:
+    image: migrate/migrate
+    entrypoint: ["/wait-for-it.sh", "db:5432", "--", "migrate"]
+    command: [
+      "-path=/migrations",
+      "-database=postgres://user:password@db:5432/tasks_db?sslmode=disable",
+      "up"
+    ]
+    volumes:
+      - ./task-service/migrations:/migrations
+      - ./scripts/wait-for-it.sh:/wait-for-it.sh
+    depends_on:
+      - db
+    networks:
+      - default
 
 volumes:
   pgdata:
