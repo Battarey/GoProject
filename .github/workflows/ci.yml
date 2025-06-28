@@ -30,4 +30,4 @@ jobs:
           docker-compose run --rm gateway_test
       - name: Run task-service tests
         run: |
-          docker-compose run --rm task-service go test ./test/...
+          docker-compose run --rm task_test

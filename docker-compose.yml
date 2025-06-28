@@ -102,5 +102,29 @@ services:
     networks:
       - default
 
+  user_test:
+    image: golang:1.23
+    working_dir: /app
+    volumes:
+      - ./user-service:/app
+    command: ["go", "test", "./test/..."]
+    env_file:
+      - .env
+    restart: "no"
+    depends_on:
+      - user-service
+      - db
+
+  task_test:
+    image: golang:1.23
+    working_dir: /app
+    volumes:
+      - ./task-service:/app
+    command: ["go", "test", "./test/..."]
+    restart: "no"
+    depends_on:
+      - task-service
+      - db
+
 volumes:
   pgdata:
