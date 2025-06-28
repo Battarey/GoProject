@@ -46,16 +46,11 @@ func (r *TaskRepository) DeleteTask(id string) error {
 	return r.db.Delete(&model.Task{}, "id = ?", taskID).Error
 }
 
-func (r *TaskRepository) ListTasks(status, assigneeID string, offset, limit int) ([]model.Task, error) {
+func (r *TaskRepository) ListTasks(status string, offset, limit int) ([]model.Task, error) {
 	var tasks []model.Task
 	query := r.db.Model(&model.Task{})
 	if status != "" {
 		query = query.Where("status = ?", status)
-	}
-	if assigneeID != "" {
-		if id, err := uuid.Parse(assigneeID); err == nil {
-			query = query.Where("assignee_id = ?", id)
-		}
 	}
 	if err := query.Offset(offset).Limit(limit).Find(&tasks).Error; err != nil {
 		return nil, err

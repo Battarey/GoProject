@@ -1,7 +1,9 @@
 # model
 
-Папка содержит структуры данных (модели) для задач и связанных сущностей.
+Папка содержит определения структур данных (моделей), используемых в сервисе.
 
-- Task (id, title, description, status, assignee, creator, labels, due_date, created_at, updated_at)
-- Status (backlog, todo, in progress, done, archived)
-- (Опционально) Comment, Attachment, Subtask
+## Структура
+model/
+└── task.go                # структура Task, отражающая задачу в базе данных
+
+Используется для описания сущностей и их свойств, которые хранятся в БД и используются в коде.

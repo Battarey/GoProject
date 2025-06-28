@@ -11,6 +11,7 @@ service TaskService {
   rpc DeleteTask (DeleteTaskRequest) returns (DeleteTaskResponse);
   rpc ListTasks (ListTasksRequest) returns (ListTasksResponse);
   rpc ChangeStatus (ChangeStatusRequest) returns (ChangeStatusResponse);
+  rpc HealthCheck (google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
 message Task {

@@ -8,6 +8,7 @@ import (
 
 type TaskServer struct {
 	pb.UnimplementedTaskServiceServer
-	Repo       *repository.TaskRepository
-	JwtService *security.JWTService
+	Repo        *repository.TaskRepository
+	JwtService  *security.JWTService
+	RateLimiter *rateLimiter
 }

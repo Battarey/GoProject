@@ -15,13 +15,20 @@ func (s *TaskServer) CreateTask(ctx context.Context, req *pb.CreateTaskRequest) 
 	if err := ValidateCreateTaskInput(req.Title); err != nil {
 		return nil, GRPCError(err.Error(), codes.InvalidArgument)
 	}
+	userID, _, _ := GetAuthContext(ctx, s.JwtService)
+	creatorUUID := uuid.Nil
+	if userID != "" {
+		if id, err := uuid.Parse(userID); err == nil {
+			creatorUUID = id
+		}
+	}
 	task := &model.Task{
 		ID:          uuid.New(),
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      "todo",
 		AssigneeID:  uuid.Nil,
-		CreatorID:   uuid.Nil, // Можно получить из JWT
+		CreatorID:   creatorUUID, // Теперь CreatorID берётся из JWT
 		Labels:      req.Labels,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
@@ -110,7 +117,7 @@ func (s *TaskServer) DeleteTask(ctx context.Context, req *pb.DeleteTaskRequest) 
 func (s *TaskServer) ListTasks(ctx context.Context, req *pb.ListTasksRequest) (*pb.ListTasksResponse, error) {
 	offset := int(req.Page-1) * int(req.PageSize)
 	limit := int(req.PageSize)
-	tasks, err := s.Repo.ListTasks(req.Status, req.AssigneeId, offset, limit)
+	tasks, err := s.Repo.ListTasks(req.Status, offset, limit)
 	if err != nil {
 		return nil, err
 	}
