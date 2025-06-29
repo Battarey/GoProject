@@ -1,0 +1,2 @@
+user-service/proto/*.pb.go
+task-service/proto/*.pb.go

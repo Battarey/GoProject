@@ -12,7 +12,10 @@ require (
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/driver/sqlite v1.5.2
 	gorm.io/gorm v1.25.7
+	user-service/proto v0.0.0
 )
+
+replace user-service/proto => ./proto
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

@@ -126,5 +126,19 @@ services:
       - task-service
       - db
 
+  e2e_test:
+    image: golang:1.23
+    working_dir: /app
+    volumes:
+      - ./e2e_test:/app
+      - ./user-service/proto:/user-service/proto
+      - ./task-service/proto:/task-service/proto
+    command: ["go", "test", "."]
+    restart: "no"
+    depends_on:
+      - user-service
+      - task-service
+      - db
+
 volumes:
   pgdata:
